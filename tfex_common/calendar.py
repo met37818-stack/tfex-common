@@ -10,6 +10,11 @@ MONTH_CODES = {3: "H", 6: "M", 9: "U", 12: "Z"}
 REVERSE_MONTH_CODES = {"H": 3, "M": 6, "U": 9, "Z": 12}
 
 
+def is_trading_day(d: datetime.date, holidays: set = SET_HOLIDAYS) -> bool:
+    """True when the SET is open: a weekday that is not in the holiday table."""
+    return d.weekday() < 5 and d.strftime("%Y-%m-%d") not in holidays
+
+
 def get_penultimate_business_day(year: int, month: int, holidays: set = SET_HOLIDAYS) -> datetime.date:
     """
     Penultimate business day of a month — the TFEX SET50 Futures/Options expiry rule.

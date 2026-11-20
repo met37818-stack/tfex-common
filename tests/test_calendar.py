@@ -35,6 +35,21 @@ class TestPenultimateBusinessDay(unittest.TestCase):
         self.assertTrue(any("no data for 2031" in str(w.message) for w in caught))
 
 
+class TestTradingDay(unittest.TestCase):
+
+    def test_weekends_are_closed(self):
+        self.assertFalse(cal.is_trading_day(datetime.date(2026, 11, 21)))  # Saturday
+
+    def test_holiday_is_closed(self):
+        self.assertFalse(cal.is_trading_day(datetime.date(2026, 10, 16)))
+
+    def test_normal_weekday_is_open(self):
+        self.assertTrue(cal.is_trading_day(datetime.date(2026, 11, 20)))
+
+    def test_custom_holiday_set(self):
+        self.assertFalse(cal.is_trading_day(datetime.date(2026, 11, 20), holidays={"2026-11-20"}))
+
+
 class TestSeriesExpiry(unittest.TestCase):
 
     def test_z26(self):

@@ -44,6 +44,7 @@ from .calendar import (
     get_contract_last_trading_day,
     get_penultimate_business_day,
     get_series_expiry_date,
+    is_trading_day,
     parse_series_expiry,
     resolve_active_series_candidates,
 )
@@ -60,14 +61,15 @@ from .turso import (
 )
 from .telegram import escape_html, send_alert, send_document
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 __all__ = [
     "BKK_TZ", "CHARM_CLAMP", "COMMISSION_2LEG_PTS", "COMMISSION_3LEG_PTS",
     "COMMISSION_4LEG_PTS", "COMMISSION_PER_LEG_PTS", "CONTRACT_MULTIPLIER",
     "FEE_PER_SIDE_THB", "SET_HOLIDAYS", "THOR_MAX_PCT",
     "MONTH_CODES", "REVERSE_MONTH_CODES", "get_contract_last_trading_day",
-    "get_penultimate_business_day", "get_series_expiry_date", "parse_series_expiry",
+    "get_penultimate_business_day", "get_series_expiry_date", "is_trading_day",
+    "parse_series_expiry",
     "resolve_active_series_candidates",
     "fetch_thor_rates_record", "select_dynamic_thor_rate", "to_decimal_rate",
     "execute_sql", "normalize_url", "parse_result", "to_arg",

@@ -34,13 +34,13 @@ into four repositories and had to be fixed four times.
 Pin a tag so a fix cannot reach production silently:
 
 ```bash
-pip install "tfex-common @ git+https://github.com/met37818-stack/tfex-common.git@v0.1.1"
+pip install "tfex-common @ git+https://github.com/met37818-stack/tfex-common.git@v0.2.0"
 ```
 
 Add to `requirements.txt`:
 
 ```
-tfex-common @ git+https://github.com/met37818-stack/tfex-common.git@v0.1.1
+tfex-common @ git+https://github.com/met37818-stack/tfex-common.git@v0.2.0
 ```
 
 ## Usage
@@ -71,3 +71,39 @@ python -m pytest -q
 
 Semantic-ish: `0.x` while the API can still change. Bump the tag and update the
 `@vX.Y.Z` pin in each consuming repo — never point a production workflow at `main`.
+
+## Migration map (verified by parity runs against the live code)
+
+| repo | helper to delete | replacement |
+|---|---|---|
+| `tfex-eod-collector` | `calendar_utils.py` (`SET_HOLIDAYS`, `get_penultimate_business_day`, `get_series_expiry_date`, `is_trading_day`) | `tfex_common.calendar` |
+| `tfex-intraday-collector` | `SET_HOLIDAYS`, `get_penultimate_business_day`, `check_holiday_early_exit` (uses the first two) | `tfex_common.calendar` |
+| `tfex-arb-opp` | `SET_HOLIDAYS`, `get_penultimate_business_day`, `get_contract_last_trading_day`, `parse_series_expiry`, `resolve_active_series_candidates`, `select_dynamic_thor_rate`, `_to_decimal_rate`, `execute_turso_sql`, `send_telegram_alert`, `send_telegram_document` | `tfex_common.{calendar,thor,turso,telegram}` |
+| `tfex-quant-analytics` | same set as `arb-opp` plus `get_series_expiry_date` | `tfex_common.{calendar,thor,turso,telegram}` |
+
+Parity measured before publishing (every case compared against the already-fixed
+repo code, zero mismatches):
+
+* `tfex-quant-analytics` — 124/124 checks (THOR across 7 rates × 8 DTEs, 36
+  penultimate-business-day cases, 15 `S50Z26`/`Z26` expiry cases)
+* `tfex-arb-opp` — 76/76 checks (THOR, `parse_series_expiry` as aware datetime,
+  active-series resolution across three roll dates)
+* `tfex-eod-collector` — 37/37 checks for 2026–2027 (its table only covered two
+  years; the 2028 rows are additions, see below)
+
+### Holiday-table superset
+
+`tfex-eod-collector` and `tfex-intraday-collector` ship 38 holidays (2026–2027);
+this package ships 53 (2026–2028). Every date in the smaller tables is present here,
+and all three tables agree on 2026 (20 days) and 2027 (18 days) — adopting the
+package therefore also gives those two repos 2028 coverage they currently lack.
+
+### Differences that are deliberate, not accidental
+
+* `get_series_expiry_date()` accepts both `Z26` and `S50Z26`; an unknown quarter
+  character raises. `tfex-quant-analytics` used `code_map.get(char, 12)`, which
+  silently produced a December expiry for a typo.
+* `get_penultimate_business_day()` warns when the year is outside the table instead
+  of returning a plausible-looking wrong date without a trace.
+* THOR above `THOR_MAX_PCT` raises instead of being divided and used.
+
