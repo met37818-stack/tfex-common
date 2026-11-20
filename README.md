@@ -34,13 +34,13 @@ into four repositories and had to be fixed four times.
 Pin a tag so a fix cannot reach production silently:
 
 ```bash
-pip install "tfex-common @ git+https://github.com/met37818-stack/tfex-common.git@v0.1.0"
+pip install "tfex-common @ git+https://github.com/met37818-stack/tfex-common.git@v0.1.1"
 ```
 
 Add to `requirements.txt`:
 
 ```
-tfex-common @ git+https://github.com/met37818-stack/tfex-common.git@v0.1.0
+tfex-common @ git+https://github.com/met37818-stack/tfex-common.git@v0.1.1
 ```
 
 ## Usage

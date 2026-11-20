@@ -50,11 +50,21 @@ class TestSeriesExpiry(unittest.TestCase):
         self.assertEqual((dt.hour, dt.minute), (16, 30))
         self.assertEqual(dt.tzinfo, BKK_TZ)
 
+    def test_accepts_full_futures_symbol(self):
+        # tfex-quant-analytics passes "S50Z26"; tfex-arb-opp passes "Z26"
+        ref = datetime.date(2026, 11, 20)
+        self.assertEqual(cal.get_series_expiry_date("S50Z26", ref),
+                         cal.get_series_expiry_date("Z26", ref))
+        self.assertEqual(cal.get_series_expiry_date("S50Z26", ref), datetime.date(2026, 12, 29))
+
     def test_invalid_series_raises(self):
+        ref = datetime.date(2026, 11, 20)
         with self.assertRaises(ValueError):
-            cal.get_series_expiry_date("X26", datetime.date(2026, 11, 20))
+            cal.get_series_expiry_date("X26", ref)
         with self.assertRaises(ValueError):
-            cal.get_series_expiry_date("ZXX", datetime.date(2026, 11, 20))
+            cal.get_series_expiry_date("S50X26", ref)   # ไม่ default เป็นธันวาคมเหมือนโค้ดเดิม
+        with self.assertRaises(ValueError):
+            cal.get_series_expiry_date("ZXX", ref)
 
 
 class TestActiveSeries(unittest.TestCase):

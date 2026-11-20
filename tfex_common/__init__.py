@@ -60,7 +60,7 @@ from .turso import (
 )
 from .telegram import escape_html, send_alert, send_document
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "BKK_TZ", "CHARM_CLAMP", "COMMISSION_2LEG_PTS", "COMMISSION_3LEG_PTS",

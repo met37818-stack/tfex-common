@@ -47,9 +47,21 @@ def get_contract_last_trading_day(year: int, month: int,
 
 
 def _split_series_code(series_code: str) -> Tuple[int, int]:
+    """
+    Accept both the bare series code ("Z26", as used by tfex-arb-opp) and the full
+    futures symbol ("S50Z26", as used by tfex-quant-analytics).
+
+    An unknown month character raises instead of silently defaulting to December -
+    tfex-quant-analytics used `code_map.get(char, 12)`, so a typo produced a valid
+    looking December expiry.
+    """
     code = str(series_code).upper().strip()
     if not code:
         raise ValueError("Empty series code")
+    if code.startswith("S50"):
+        code = code[3:]
+    if len(code) < 3:
+        raise ValueError(f"Invalid series code: '{series_code}' (expected e.g. Z26 or S50Z26)")
     month = REVERSE_MONTH_CODES.get(code[0])
     if month is None:
         raise ValueError(f"Invalid series month character: '{code[0]}' (expected H, M, U or Z)")
