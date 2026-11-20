@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tfex-common"
+version = "0.1.0"
+description = "Shared helpers for the TFEX SET50 pipeline: BOT THOR rates, SET calendar/expiry, Turso HTTP pipeline client, Telegram dispatch"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = ["requests>=2.31.0"]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["tfex_common*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
