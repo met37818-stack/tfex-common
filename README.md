@@ -8,7 +8,7 @@ into four repositories and had to be fixed four times.
 |---|---|
 | `tfex_common.thor` | `select_dynamic_thor_rate` / `_clean` in 4 repos |
 | `tfex_common.calendar` | `SET_HOLIDAYS`, `get_penultimate_business_day`, `get_series_expiry_date` in 4 repos |
-| `tfex_common.turso` | `execute_turso_sql` (+ `normalize_turso_url`, `to_turso_arg`) in 4 repos |
+| `tfex_common.turso` | `execute_turso_sql` (+ `normalize_turso_url`, `to_turso_arg`) in 4 repos, and the multi-statement CDC batch writer (`execute_pipeline`) in `tfex-intraday-collector` |
 | `tfex_common.telegram` | `send_telegram_alert` / `send_telegram_document` in 3 repos |
 | `tfex_common.constants` | `CONTRACT_MULTIPLIER`, commission hurdles, `THOR_MAX_PCT`, `BKK_TZ` |
 
@@ -27,20 +27,22 @@ into four repositories and had to be fixed four times.
   and failures return `False` instead of aborting a job that already wrote its results.
 * **Turso** — `data["results"][0]` raised `IndexError` on an odd envelope, and a single
   transient 5xx killed the run. Now: retry network/429/5xx with backoff honouring
-  `Retry-After`, never retry deterministic SQL errors.
+  `Retry-After`, never retry deterministic SQL errors. `execute_pipeline()` adds the
+  same guarantees to multi-statement batches (the CDC writer), and redacts the bearer
+  token from any response body quoted in an exception.
 
 ## Install
 
 Pin a tag so a fix cannot reach production silently:
 
 ```bash
-pip install "tfex-common @ git+https://github.com/met37818-stack/tfex-common.git@v0.2.0"
+pip install "tfex-common @ git+https://github.com/met37818-stack/tfex-common.git@v0.3.0"
 ```
 
 Add to `requirements.txt`:
 
 ```
-tfex-common @ git+https://github.com/met37818-stack/tfex-common.git@v0.2.0
+tfex-common @ git+https://github.com/met37818-stack/tfex-common.git@v0.3.0
 ```
 
 ## Usage
@@ -58,6 +60,21 @@ thor = fetch_thor_rates_record(execute_sql, pipeline, os.environ["TURSO_AUTH_TOK
 rate, tenor = select_dynamic_thor_rate(thor, dte=30)
 _, front, nxt = resolve_active_series_candidates(datetime.datetime.now(BKK_TZ))
 send_alert(os.environ["TELEGRAM_BOT_TOKEN"], os.environ["TELEGRAM_CHAT_ID"], html)
+```
+
+Multi-statement batch (CDC writer):
+
+```python
+from tfex_common import execute_pipeline, to_arg
+
+requests_list = [
+    {"type": "execute", "stmt": {"sql": "INSERT INTO t (a, b) VALUES (?, ?)",
+                                 "args": [to_arg(1), to_arg("x")]}},
+    {"type": "execute", "stmt": {"sql": "INSERT INTO t (a, b) VALUES (?, ?)",
+                                 "args": [to_arg(2), to_arg(None)]}},
+    {"type": "close"},
+]
+execute_pipeline(pipeline, token, requests_list=requests_list, timeout=30)   # -> results
 ```
 
 ## Tests

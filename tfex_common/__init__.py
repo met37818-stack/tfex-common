@@ -54,14 +54,16 @@ from .thor import (
     to_decimal_rate,
 )
 from .turso import (
+    execute_pipeline,
     execute_sql,
     normalize_url,
     parse_result,
+    redact,
     to_arg,
 )
 from .telegram import escape_html, send_alert, send_document
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "BKK_TZ", "CHARM_CLAMP", "COMMISSION_2LEG_PTS", "COMMISSION_3LEG_PTS",
@@ -72,6 +74,6 @@ __all__ = [
     "parse_series_expiry",
     "resolve_active_series_candidates",
     "fetch_thor_rates_record", "select_dynamic_thor_rate", "to_decimal_rate",
-    "execute_sql", "normalize_url", "parse_result", "to_arg",
+    "execute_pipeline", "execute_sql", "normalize_url", "parse_result", "redact", "to_arg",
     "escape_html", "send_alert", "send_document", "__version__",
 ]

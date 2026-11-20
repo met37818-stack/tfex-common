@@ -26,9 +26,22 @@ def normalize_url(raw_url: str, path: str = "/v2/pipeline") -> str:
     url = str(raw_url).strip().rstrip("/")
     if url.startswith("libsql://"):
         url = "https://" + url[len("libsql://"):]
+    elif not url.startswith(("http://", "https://")):
+        # A bare host (e.g. "db.turso.io") appears in a few callers.
+        url = "https://" + url
     if url.endswith(path):
         return url
     return url + path
+
+
+def redact(text: str, token: Optional[str]) -> str:
+    """Replace a live bearer token in a response body before it reaches a log."""
+    if not text:
+        return ""
+    out = str(text)
+    if token:
+        out = out.replace(token, "***")
+    return out
 
 
 def to_arg(val) -> Dict[str, Any]:
@@ -138,3 +151,84 @@ def execute_sql(pipeline_url: str, auth_token: str, sql: str, args: Optional[Lis
     if last_exc is not None:
         raise last_exc
     raise RuntimeError("Turso request failed without a captured error")
+
+
+def execute_pipeline(pipeline_url: str, auth_token: str,
+                     requests_list: Optional[List[Dict[str, Any]]] = None,
+                     payload: Optional[Dict[str, Any]] = None,
+                     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
+                     timeout: int = DEFAULT_TIMEOUT) -> List[Dict[str, Any]]:
+    """
+    POST a v2 pipeline payload (one or more statements) and return the raw `results`.
+
+    Pass either `requests_list` (a list of request objects) or `payload`
+    (`{"requests": [...]}`) - the batch writers built one or the other.
+
+    Behaviour mirrors execute_sql():
+      * network errors and HTTP 429/5xx retry with backoff, honouring Retry-After;
+      * any `{"type": "error"}` entry raises RuntimeError with the first message
+        (deterministic, never retried);
+      * the bearer token is redacted from response text that ends up in an exception.
+    """
+    if payload is not None:
+        body = dict(payload)
+    elif requests_list is not None:
+        body = {"requests": requests_list}
+    else:
+        raise ValueError("execute_pipeline() needs requests_list or payload")
+
+    reqs = body.get("requests")
+    if not isinstance(reqs, list) or not reqs:
+        raise ValueError("pipeline payload needs a non-empty 'requests' list")
+    if not pipeline_url:
+        raise ValueError("Turso pipeline_url is required")
+
+    headers = {
+        "Authorization": f"Bearer {auth_token}",
+        "Content-Type": "application/json",
+    }
+
+    last_exc: Optional[Exception] = None
+    for attempt in range(1, max_attempts + 1):
+        delay = min(2.0 ** (attempt - 1), 8.0)
+        try:
+            resp = requests.post(pipeline_url, headers=headers, json=body, timeout=timeout)
+        except requests.RequestException as exc:
+            last_exc = exc
+        else:
+            if resp.status_code == 429 or resp.status_code >= 500:
+                last_exc = RuntimeError(
+                    f"Turso pipeline failed (HTTP {resp.status_code}): "
+                    f"{redact(resp.text, auth_token)[:200]}")
+                delay = _retry_delay(attempt, resp.headers.get("Retry-After"))
+            elif resp.status_code != 200:
+                raise RuntimeError(
+                    f"Turso pipeline failed (HTTP {resp.status_code}): "
+                    f"{redact(resp.text, auth_token)[:200]}")
+            else:
+                data = resp.json()
+                results = data.get("results") or []
+                if not results:
+                    raise RuntimeError(
+                        "Turso pipeline returned no results "
+                        f"(payload keys: {sorted(data.keys())})")
+                errors = [
+                    (item.get("error") or {}).get("message", "Unknown statement error")
+                    for item in results
+                    if item.get("type") == "error"
+                ]
+                if errors:
+                    raise RuntimeError(
+                        f"Turso SQL execution error ({len(errors)} statement(s)): "
+                        f"{redact(errors[0], auth_token)}")
+                return results
+
+        if attempt >= max_attempts:
+            break
+        print(f"[TURSO] {type(last_exc).__name__} on attempt {attempt}/{max_attempts}: "
+              f"{redact(str(last_exc), auth_token)[:120]} — retry in {delay:.0f}s")
+        time.sleep(delay)
+
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("Turso pipeline request failed without a captured error")

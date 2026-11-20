@@ -123,3 +123,84 @@ class TestExecute(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class TestNormalizeBareHost(unittest.TestCase):
+    def test_bare_host_gets_https(self):
+        self.assertEqual(turso.normalize_url("db.turso.io"), "https://db.turso.io/v2/pipeline")
+
+    def test_http_url_is_left_alone(self):
+        self.assertEqual(turso.normalize_url("http://localhost:8080"),
+                         "http://localhost:8080/v2/pipeline")
+
+
+class TestExecutePipeline(unittest.TestCase):
+    """Multi-statement batches (the CDC writer in tfex-intraday-collector)."""
+
+    REQS = [{"type": "execute", "stmt": {"sql": "INSERT 1"}},
+            {"type": "execute", "stmt": {"sql": "INSERT 2"}},
+            {"type": "close"}]
+
+    OK_BATCH = {"results": [{"type": "ok", "response": {"result": {"cols": [], "rows": []}}},
+                            {"type": "ok", "response": {"result": {"cols": [], "rows": []}}}]}
+
+    def test_accepts_requests_list(self):
+        with patch.object(turso.requests, "post", return_value=_Resp(body=self.OK_BATCH)) as post:
+            results = turso.execute_pipeline("http://x", "tok", requests_list=self.REQS)
+        self.assertEqual(len(results), 2)
+        self.assertEqual(post.call_args.kwargs["json"], {"requests": self.REQS})
+
+    def test_accepts_payload_dict(self):
+        payload = {"requests": self.REQS}
+        with patch.object(turso.requests, "post", return_value=_Resp(body=self.OK_BATCH)) as post:
+            turso.execute_pipeline("http://x", "tok", payload=payload)
+        self.assertEqual(post.call_args.kwargs["json"], payload)
+
+    def test_statement_error_raises_and_is_not_retried(self):
+        calls = {"n": 0}
+        body = {"results": [{"type": "error", "error": {"message": "UNIQUE constraint failed"}}]}
+
+        def fake_post(*a, **k):
+            calls["n"] += 1
+            return _Resp(body=body)
+
+        with patch.object(turso.requests, "post", side_effect=fake_post):
+            with self.assertRaises(RuntimeError) as ctx:
+                turso.execute_pipeline("http://x", "tok", requests_list=self.REQS)
+        self.assertIn("UNIQUE constraint failed", str(ctx.exception))
+        self.assertEqual(calls["n"], 1)
+
+    def test_retries_5xx_then_succeeds(self):
+        seq = [_Resp(503, text="unavailable"), _Resp(body=self.OK_BATCH)]
+        with patch.object(turso.requests, "post", side_effect=seq), \
+             patch.object(turso.time, "sleep", lambda *_: None):
+            results = turso.execute_pipeline("http://x", "tok", requests_list=self.REQS)
+        self.assertEqual(len(results), 2)
+
+    def test_token_is_redacted_from_error_text(self):
+        token = "secret-token-123"
+        leaky = _Resp(400, text=f"bad request with Authorization: Bearer {token}")
+        with patch.object(turso.requests, "post", return_value=leaky):
+            with self.assertRaises(RuntimeError) as ctx:
+                turso.execute_pipeline("http://x", token, requests_list=self.REQS)
+        self.assertNotIn(token, str(ctx.exception))
+        self.assertIn("***", str(ctx.exception))
+
+    def test_missing_payload_is_rejected(self):
+        with self.assertRaises(ValueError):
+            turso.execute_pipeline("http://x", "tok")
+        with self.assertRaises(ValueError):
+            turso.execute_pipeline("http://x", "tok", requests_list=[])
+
+    def test_empty_results_envelope_raises(self):
+        with patch.object(turso.requests, "post", return_value=_Resp(body={"foo": 1})):
+            with self.assertRaises(RuntimeError):
+                turso.execute_pipeline("http://x", "tok", requests_list=self.REQS)
+
+    def test_redact_helper(self):
+        self.assertEqual(turso.redact("Bearer abc", "abc"), "Bearer ***")
+        self.assertEqual(turso.redact("", "abc"), "")
+        self.assertEqual(turso.redact("plain", None), "plain")
+
+
+if __name__ == "__main__":
+    unittest.main()
