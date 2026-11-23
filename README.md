@@ -96,6 +96,22 @@ The layout exists so the two alerting jobs cannot drift apart: measured numbers 
 first, model assumptions are labelled as such, and anything the pipeline cannot
 support is listed once under `⏳ ยังไม่พร้อม` instead of being printed as `0.0`.
 
+## Operational status
+
+`docs/HANDOFF.md` is the living status document for the five repositories that consume
+this library: current pins, CI state, per-repo Telegram notifications, schedules, known
+debts, and the health-check commands. Its status table is generated, not hand-written:
+
+```bash
+python scripts/update_handoff.py --check   # show what would change
+python scripts/update_handoff.py           # rewrite the marked blocks from GitHub
+python scripts/update_handoff.py --no-tests
+```
+
+The script only touches the blocks between `<!-- AUTO:... -->` markers, so prose stays
+intact; if a marker is missing it refuses to write at all. It reads through the `gh` CLI
+(`GH_BIN` overrides the binary path) and needs no other dependency.
+
 ## Tests
 
 ```bash
