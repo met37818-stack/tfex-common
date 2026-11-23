@@ -1,6 +1,6 @@
 # HANDOFF — TFEX SET50 pipeline (5 repos)
 
-> อัปเดตล่าสุด: <!-- AUTO:UPDATED -->2026-11-23 12:45 ICT<!-- /AUTO:UPDATED --> · เอกสารนี้เขียนเพื่อให้ session ใหม่ทำงานต่อได้ทันทีโดยไม่ต้องค้น history
+> อัปเดตล่าสุด: <!-- AUTO:UPDATED -->2026-11-23 12:47 ICT<!-- /AUTO:UPDATED --> · เอกสารนี้เขียนเพื่อให้ session ใหม่ทำงานต่อได้ทันทีโดยไม่ต้องค้น history
 > ที่เก็บโค้ดในเครื่อง: `$HOME/Documents/tfex-review\` · GitHub org: `met37818-stack`
 
 ---
@@ -10,11 +10,13 @@
 <!-- AUTO:STATUS:START -->
 | repo | บทบาท | pin `tfex-common` | tests | CI บน main | PR ค้าง |
 |---|---|---|---|---|---|
-| `tfex-common` | shared lib (ใช้ร่วมทุก repo) | — (tag **v0.6.0** = `d73c2c9`) | ? | ⏳ | 0 |
+| `tfex-common` | shared lib (ใช้ร่วมทุก repo) | — (tag **v0.6.0** = `d73c2c9`) | **118** | ✅ | 0 |
 | `tfex-eod-collector` | ดึง EOD จาก TFEX/BOT → Turso | `84c52f8` (v0.5.0) | **42** | ✅ | 0 |
 | `tfex-intraday-collector` | เก็บ bar 1 นาทีผ่าน Settrade v2 → Turso | `d73c2c9` (v0.6.0) | **41** | ✅ | 0 |
 | `tfex-arb-opp` | สแกน arbitrage จากข้อมูล intraday | `d73c2c9` (v0.6.0) | **50** | ✅ | 0 |
 | `tfex-quant-analytics` | playbook เช้า + dashboard GitHub Pages | `84c52f8` (v0.5.0) | **36** | ✅ | 0 |
+
+**รวม 287 tests**
 <!-- AUTO:STATUS:END -->
 
 ทุก repo มี `.github/workflows/tests.yml` (pytest บน push + PR) และ step `if: failure() || cancelled()` ที่ยิง Telegram fallback
