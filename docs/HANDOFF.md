@@ -155,6 +155,9 @@ cd $HOME/Documents/tfex-review/tfex-quant-analytics && .venv/Scripts/python.exe 
 (ปิดเครื่อง = ไม่มีอะไรทำงาน ไม่มี task ค้าง) ทุกครั้งที่รันจะ `git pull` ก่อน แล้ว
 commit + push **เฉพาะเมื่อเนื้อหาเปลี่ยนจริง**
 
+> branch ปลายทาง = **branch ที่ checkout อยู่ในเครื่อง** (สคริปต์ไม่มี branch logic) — ณ 2026-11-23 ตั้งไว้ที่ `main` และ push ตรงเข้า `main` โดยไม่ผ่าน PR
+> (เหตุผลที่ปลอดภัย: `main` ไม่มี branch protection และ repo ลูกข่าย pin เป็น commit SHA) ถ้าอยากกลับไปใช้ PR ให้ `git checkout -b <branch>` ค้างไว้ก่อนรอบถัดไป
+
 ```bash
 # ดูว่า loop ทำงานอยู่ไหม / รอบล่าสุดเมื่อไร
 tail -5 "$LOCALAPPDATA/hermes/logs/handoff-refresh.log"
