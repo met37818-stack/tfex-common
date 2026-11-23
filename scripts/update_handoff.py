@@ -4,6 +4,8 @@
     python scripts/update_handoff.py            # เขียน docs/HANDOFF.md (ค่าเริ่มต้น)
     python scripts/update_handoff.py --check    # แค่บอกว่าจะเปลี่ยนอะไร ไม่เขียนไฟล์
     python scripts/update_handoff.py --no-tests # ข้ามการดึงจำนวนเทสต์จาก CI (เร็ว)
+    python scripts/update_handoff.py --push     # อัปเดต + commit + push ถ้ามีอะไรเปลี่ยน
+                                                # (ใช้โดย scheduled task ที่รันตอนเปิดเครื่อง)
 
 ดึงจาก GitHub ผ่าน gh CLI (ใช้ credential ที่ login ไว้แล้ว):
   * pin ของ tfex-common ใน requirements.txt บน main ของแต่ละ repo
@@ -116,9 +118,18 @@ def open_prs(repo: str) -> int:
 
 
 def latest_main_run(repo: str) -> Dict[str, str]:
+    """
+    run ที่ "จบแล้ว" ล่าสุดบน main
+
+    ต้องข้าม run ที่ยัง in_progress: ถ้าเอา run ที่กำลังรันมาแสดงเป็น ⏳ ทุกครั้ง
+    เอกสารจะเปลี่ยนค่าไปมา และตัว auto-push จะสร้าง commit ซ้ำ ๆ ทุกครั้งที่ CI เริ่ม
+    """
     data = gh_json(["run", "list", "--repo", f"{OWNER}/{repo}", "--branch", "main",
-                    "--limit", "1", "--json", "databaseId,conclusion,status,createdAt,name"])
-    return (data or [{}])[0]
+                    "--limit", "8", "--json", "databaseId,conclusion,status,createdAt,name"]) or []
+    for run in data:
+        if run.get("status") == "completed":
+            return run
+    return {}
 
 
 def passed_count(repo: str, run_id) -> Optional[int]:
@@ -202,6 +213,60 @@ def resolve_pin_tag(pin: str, tags: List[Tuple[str, str, str]]) -> str:
     return ""
 
 
+def git_bin() -> str:
+    """หา git ให้ได้แม้รันจาก context ที่ PATH ไม่ครบ (startup / scheduled task)"""
+    env = os.environ.get("GIT_BIN")
+    if env and os.path.exists(env):
+        return env
+    found = shutil.which("git")
+    if found:
+        return found
+    for cand in (r"C:\Program Files\Git\cmd\git.exe",
+                 r"C:\Program Files (x86)\Git\cmd\git.exe",
+                 os.path.expandvars(r"%LOCALAPPDATA%\Programs\Git\cmd\git.exe")):
+        if os.path.exists(cand):
+            return cand
+    sys.exit("ไม่พบ git — ตั้ง GIT_BIN หรือติดตั้ง Git for Windows")
+
+
+def _git(root: str, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run([git_bin(), "-C", root] + list(args),
+                          capture_output=True, text=True, encoding="utf-8")
+
+
+def _git_root(path: str) -> str:
+    out = _git(os.path.dirname(os.path.abspath(path)), "rev-parse", "--show-toplevel")
+    return out.stdout.strip() if out.returncode == 0 else ""
+
+
+def push_changes(path: str) -> int:
+    """
+    Commit + push เฉพาะเมื่อไฟล์เปลี่ยนจริง
+
+    เรียกหลังเขียนไฟล์แล้ว และเฉพาะเมื่อผู้ใช้ขอ (--push) — ใช้โดย scheduled task
+    ที่รันตอน logon/ทุกกี่ชั่วโมง ถ้าไม่มีอะไรเปลี่ยนจะไม่สร้าง commit ขยะ
+    """
+    root = _git_root(path)
+    if not root:
+        print("[PUSH] ไม่ใช่ git repo — ข้าม")
+        return 1
+    rel = os.path.relpath(os.path.abspath(path), root)
+    _git(root, "add", rel)
+    if _git(root, "diff", "--cached", "--quiet").returncode == 0:
+        print("[PUSH] ไม่มีอะไรให้ commit")
+        return 0
+    commit = _git(root, "commit", "-q", "-m", "docs: refresh handoff status (auto)")
+    if commit.returncode != 0:
+        print("[PUSH] commit ไม่สำเร็จ:", (commit.stderr or "")[:200])
+        return 1
+    push = _git(root, "push", "-q")
+    if push.returncode != 0:
+        print("[PUSH] push ไม่สำเร็จ:", (push.stderr or "")[:200])
+        return 1
+    print("[PUSH] commit + push แล้ว")
+    return 0
+
+
 def default_doc_path() -> str:
     """หา HANDOFF.md: docs/ ก่อน แล้วค่อยข้างสคริปต์ แล้วค่อยราก repo"""
     here = os.path.dirname(os.path.abspath(__file__))
@@ -219,9 +284,18 @@ def main() -> int:
     ap.add_argument("--file", default="", help="path ของ HANDOFF.md (ค่าเริ่มต้น: docs/HANDOFF.md ใน repo นี้)")
     ap.add_argument("--check", action="store_true", help="ไม่เขียนไฟล์ แค่รายงานว่าจะเปลี่ยนอะไร")
     ap.add_argument("--no-tests", action="store_true", help="ข้ามการดึงจำนวนเทสต์จาก CI log")
+    ap.add_argument("--push", action="store_true",
+                    help="commit + push อัตโนมัติเมื่อเนื้อหาเปลี่ยน (สำหรับ scheduled task)")
     args = ap.parse_args()
 
     path = args.file or default_doc_path()
+    if args.push:
+        root = _git_root(path)
+        if root:
+            pulled = _git(root, "pull", "-q", "--ff-only")
+            if pulled.returncode != 0:
+                print("[PUSH] pull ไม่ผ่าน (มี commit ค้างในเครื่อง?) — ข้ามรอบนี้")
+                return 1
     if not os.path.exists(path):
         sys.exit(f"ไม่พบไฟล์: {path}")
 
@@ -279,6 +353,8 @@ def main() -> int:
     with open(path, "w", encoding="utf-8", newline="") as fh:
         fh.write(new_doc.replace("\n", "\r\n") if crlf else new_doc)
     print(f"อัปเดตแล้ว: {path} ({updated})")
+    if args.push:
+        return push_changes(path)
     return 0
 
 

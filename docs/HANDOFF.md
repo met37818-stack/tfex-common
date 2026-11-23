@@ -143,6 +143,33 @@ cd $HOME/Documents/tfex-review/tfex-quant-analytics && .venv/Scripts/python.exe 
 
 ### อัปเดตสถานะอัตโนมัติ
 
+มีสองชั้น แยกให้ชัด:
+
+| ชั้น | เกิดเมื่อไร |
+|---|---|
+| ตัวเลขในไฟล์ | เมื่อรัน `update_handoff.py` (ดึงจาก GitHub API) |
+| ไฟล์บน GitHub | เมื่อ `--push` หรือ commit/push เอง |
+
+**โหมดอัตโนมัติที่ติดตั้งไว้ (เครื่องนี้)**: `scripts/handoff_refresh_loop.py` ถูกรันโดย
+ไฟล์ `.vbs` ใน Startup folder → เริ่มทันทีตอนล็อกอิน แล้ววนทุก 3 ชั่วโมงตราบที่เครื่องเปิดอยู่
+(ปิดเครื่อง = ไม่มีอะไรทำงาน ไม่มี task ค้าง) ทุกครั้งที่รันจะ `git pull` ก่อน แล้ว
+commit + push **เฉพาะเมื่อเนื้อหาเปลี่ยนจริง**
+
+```bash
+# ดูว่า loop ทำงานอยู่ไหม / รอบล่าสุดเมื่อไร
+tail -5 "$LOCALAPPDATA/hermes/logs/handoff-refresh.log"
+
+# หยุดถาวร
+rm "$APPDATA/Microsoft/Windows/Start Menu/Programs/Startup/tfex-handoff-refresh.vbs"
+
+# รันเองหนึ่งรอบ (ทดสอบ)
+python scripts/handoff_refresh_loop.py --once --verbose
+```
+
+ตัว updater จะใช้ **run ที่ completed แล้วล่าสุด** ของ main เท่านั้น (ไม่เอา run ที่กำลังรัน)
+ไม่งั้นช่อง CI จะสลับ ✅/⏳ ไปมาและ auto-push จะสร้าง commit ซ้ำทุกครั้งที่ CI เริ่ม
+
+
 ```bash
 cd "$HOME/Documents/tfex-review/tfex-common"
 python scripts/update_handoff.py --check    # ดูว่าจะเปลี่ยนอะไร (ไม่เขียนไฟล์)
