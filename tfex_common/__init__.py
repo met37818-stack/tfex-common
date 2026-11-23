@@ -25,6 +25,7 @@ Layout:
     tfex_common.thor        BOT THOR unit handling and DTE-based tenor selection
     tfex_common.turso       Turso v2 pipeline client with retry/backoff
     tfex_common.telegram    redaction-safe Telegram dispatch
+    tfex_common.report      measured / inferred / plan report layout + Telegram limit
 """
 from .constants import (
     BKK_TZ,
@@ -61,9 +62,17 @@ from .turso import (
     redact,
     to_arg,
 )
+from .report import (
+    DIVIDER,
+    TELEGRAM_LIMIT,
+    Report,
+    bullet,
+    rr,
+    sub,
+)
 from .telegram import escape_html, send_alert, send_document
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "BKK_TZ", "CHARM_CLAMP", "COMMISSION_2LEG_PTS", "COMMISSION_3LEG_PTS",
@@ -75,5 +84,7 @@ __all__ = [
     "resolve_active_series_candidates",
     "fetch_thor_rates_record", "select_dynamic_thor_rate", "to_decimal_rate",
     "execute_pipeline", "execute_sql", "normalize_url", "parse_result", "redact", "to_arg",
-    "escape_html", "send_alert", "send_document", "__version__",
+    "escape_html", "send_alert", "send_document",
+    "Report", "TELEGRAM_LIMIT", "DIVIDER", "bullet", "sub", "rr",
+    "__version__",
 ]
