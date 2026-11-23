@@ -40,7 +40,6 @@ REPOS: List[Tuple[str, str]] = [
     ("tfex-common", "shared lib (ใช้ร่วมทุก repo)"),
     ("tfex-eod-collector", "ดึง EOD จาก TFEX/BOT → Turso"),
     ("tfex-intraday-collector", "เก็บ bar 1 นาทีผ่าน Settrade v2 → Turso"),
-    ("tfex-arb-opp", "สแกน arbitrage จากข้อมูล intraday"),
     ("tfex-quant-analytics", "playbook เช้า + dashboard GitHub Pages"),
 ]
 
@@ -117,15 +116,24 @@ def open_prs(repo: str) -> int:
     return len(data or [])
 
 
-def latest_main_run(repo: str) -> Dict[str, str]:
+def latest_main_run(repo: str, workflow: str = "tests.yml") -> Dict[str, str]:
     """
-    run ที่ "จบแล้ว" ล่าสุดบน main
+    run ที่ "จบแล้ว" ล่าสุดของ **tests workflow** บน main
+
+    ต้องกรองด้วย --workflow เพราะ repo ที่มี workflow เก็บข้อมูล (eod/intraday/quant)
+    มักมี run ของตัวเก็บข้อมูลที่ใหม่กว่า tests → ถ้าไม่กรอง ช่อง CI จะสะท้อนสถานะ
+    ของตัวเก็บข้อมูล และจำนวนเทสต์จะกลายเป็น None ("?")
 
     ต้องข้าม run ที่ยัง in_progress: ถ้าเอา run ที่กำลังรันมาแสดงเป็น ⏳ ทุกครั้ง
     เอกสารจะเปลี่ยนค่าไปมา และตัว auto-push จะสร้าง commit ซ้ำ ๆ ทุกครั้งที่ CI เริ่ม
     """
+    json_fields = "databaseId,conclusion,status,createdAt,name"
     data = gh_json(["run", "list", "--repo", f"{OWNER}/{repo}", "--branch", "main",
-                    "--limit", "8", "--json", "databaseId,conclusion,status,createdAt,name"]) or []
+                    "--workflow", workflow, "--limit", "8", "--json", json_fields]) or []
+    if not data:
+        # fallback: repo ที่ยังไม่มีไฟล์ workflow ชื่อนี้ — ใช้พฤติกรรมเดิม
+        data = gh_json(["run", "list", "--repo", f"{OWNER}/{repo}", "--branch", "main",
+                        "--limit", "8", "--json", json_fields]) or []
     for run in data:
         if run.get("status") == "completed":
             return run
