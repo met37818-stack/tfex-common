@@ -1,0 +1,8 @@
+' TFEX handoff auto-refresh - copy this file into
+'   %APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\
+' and fix the two paths below. It starts at logon and refreshes docs/HANDOFF.md
+' every 3 hours while the machine stays on; deleting the copy stops it.
+' Keep the file ASCII only and without a BOM - the VBScript engine rejects both.
+Set sh = CreateObject("WScript.Shell")
+sh.CurrentDirectory = "C:\path\to\tfex-common"
+sh.Run """C:\path\to\pythonw.exe"" ""C:\path\to\tfex-common\scripts\handoff_refresh_loop.py""", 0, False
