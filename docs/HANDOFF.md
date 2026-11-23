@@ -12,7 +12,7 @@
 |---|---|---|---|---|---|
 | `tfex-common` | shared lib (ใช้ร่วมทุก repo) | — (tag **v0.6.0** = `d73c2c9`) | **118** | ✅ | 0 |
 | `tfex-eod-collector` | ดึง EOD จาก TFEX/BOT → Turso | `84c52f8` (v0.5.0) | **42** | ✅ | 0 |
-| `tfex-intraday-collector` | เก็บ bar 1 นาทีผ่าน Settrade v2 → Turso | `d73c2c9` (v0.6.0) | **41** | ✅ | 0 |
+| `tfex-intraday-collector` | เก็บ bar 1 นาทีผ่าน Settrade v2 → Turso | `d73c2c9` (v0.6.0) | **404** | ❌ | 5 |
 | `tfex-arb-opp` | สแกน arbitrage จากข้อมูล intraday | `d73c2c9` (v0.6.0) | **50** | ✅ | 0 |
 | `tfex-quant-analytics` | playbook เช้า + dashboard GitHub Pages | `84c52f8` (v0.5.0) | **36** | ✅ | 0 |
 
