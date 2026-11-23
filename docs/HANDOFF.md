@@ -1,6 +1,6 @@
 # HANDOFF — TFEX SET50 pipeline (4 repos)
 
-> อัปเดตล่าสุด: <!-- AUTO:UPDATED -->2026-11-23 19:03 ICT<!-- /AUTO:UPDATED --> · เอกสารนี้เขียนเพื่อให้ session ใหม่ทำงานต่อได้ทันทีโดยไม่ต้องค้น history
+> อัปเดตล่าสุด: <!-- AUTO:UPDATED -->2026-11-23 20:19 ICT<!-- /AUTO:UPDATED --> · เอกสารนี้เขียนเพื่อให้ session ใหม่ทำงานต่อได้ทันทีโดยไม่ต้องค้น history
 > ที่เก็บโค้ดในเครื่อง: `$HOME/Documents/tfex-review\` · GitHub org: `met37818-stack`
 
 ---
@@ -62,6 +62,8 @@ tfex-common = ไลบรารีกลางที่ทุกตัว impor
 | 09:15, 14:00 | `tfex-intraday-collector` → `Collect TFEX 1-Minute Data` | session worker เก็บ bar (timeout 240 นาที) |
 
 **window ที่ eod ยอมรับข้อมูลเก่า**: 14:00–18:00 UTC = 21:00–02:00 ICT (`collect_eod.yml`) — 06:15 ICT (23:00 UTC) อยู่นอก window จึง strict
+
+> **ตารางที่ถูกถอดออก (2026-11-23)**: 09:40 / 14:10 ICT (`tfex-arb-opp` → `TFEX Real-time 1-Minute Arbitrage Radar`) — ลบพร้อม repo และลบ cron job ทั้งสองรายการใน cron-job.org แล้ว จึงเหลือ 5 รายการตามตารางข้างบน
 
 ---
 
@@ -184,7 +186,8 @@ python scripts/update_handoff.py --no-tests # โหมดเร็ว: ข้�
 | TFEX ลงข้อมูลเป็นรอบ (investor types/THOR มาก่อน settlement) | ต้นเหตุ exit 3 ตอน 01:15 — ไม่ใช่บั๊ก |
 | vision model ของ Hermes ตาย (404) | ห้ามใช้ตรวจภาพ; ยืนยันด้วย API แทน |
 | `curl` (native) ไม่เข้าใจ path `/tmp` ของ MSYS | ต้องใช้ `C:/Users/...` — ไม่งั้นเจอ "client returned ERROR on write" |
-| `tfex-arb-opp` + `tfex-options-combination-order` ถูกลบออกจาก org (2026-11-23) | ไม่มี repo ไหนพึ่งพาทั้งสองตัว; local clone ที่ `~/Documents/tfex-review/` คือสำเนาสุดท้ายที่เหลืออยู่ |
+| `tfex-arb-opp` + `tfex-options-combination-order` ถูกลบออกจาก org (2026-11-23) | ไม่มี repo ไหนพึ่งพาทั้งสองตัว; local clone ถูกลบตามไปด้วย — โค้ดสองชุดนี้ไม่เหลืออยู่ทั้งบน GitHub และในเครื่อง |
+| ตาราง `arb_worker_heartbeat` ใน Turso | กำพร้า (ไม่มีโค้ดอ่าน/เขียนแล้ว) — **ตั้งใจทิ้งไว้** ไม่ต้อง DROP; ถ้าอนาคตมี repo ใหม่ใช้ชื่อตารางซ้ำ ให้ล้างด้วย `DELETE FROM` ก่อนอ้าง heartbeat |
 
 ---
 
