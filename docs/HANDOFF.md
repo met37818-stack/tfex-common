@@ -1,6 +1,6 @@
-# HANDOFF — TFEX SET50 pipeline (5 repos)
+# HANDOFF — TFEX SET50 pipeline (4 repos)
 
-> อัปเดตล่าสุด: <!-- AUTO:UPDATED -->2026-11-23 12:47 ICT<!-- /AUTO:UPDATED --> · เอกสารนี้เขียนเพื่อให้ session ใหม่ทำงานต่อได้ทันทีโดยไม่ต้องค้น history
+> อัปเดตล่าสุด: <!-- AUTO:UPDATED -->2026-11-23 19:03 ICT<!-- /AUTO:UPDATED --> · เอกสารนี้เขียนเพื่อให้ session ใหม่ทำงานต่อได้ทันทีโดยไม่ต้องค้น history
 > ที่เก็บโค้ดในเครื่อง: `$HOME/Documents/tfex-review\` · GitHub org: `met37818-stack`
 
 ---
@@ -13,10 +13,9 @@
 | `tfex-common` | shared lib (ใช้ร่วมทุก repo) | — (tag **v0.6.0** = `d73c2c9`) | **118** | ✅ | 0 |
 | `tfex-eod-collector` | ดึง EOD จาก TFEX/BOT → Turso | `84c52f8` (v0.5.0) | **42** | ✅ | 0 |
 | `tfex-intraday-collector` | เก็บ bar 1 นาทีผ่าน Settrade v2 → Turso | `d73c2c9` (v0.6.0) | **41** | ✅ | 0 |
-| `tfex-arb-opp` | สแกน arbitrage จากข้อมูล intraday | `d73c2c9` (v0.6.0) | **50** | ✅ | 0 |
 | `tfex-quant-analytics` | playbook เช้า + dashboard GitHub Pages | `84c52f8` (v0.5.0) | **36** | ✅ | 0 |
 
-**รวม 287 tests**
+**รวม 237 tests**
 <!-- AUTO:STATUS:END -->
 
 ทุก repo มี `.github/workflows/tests.yml` (pytest บน push + PR) และ step `if: failure() || cancelled()` ที่ยิง Telegram fallback
@@ -29,14 +28,10 @@
 TFEX / BOT (www.tfex.co.th, app.bot.or.th)
         │  scrape + REST
         ▼
-tfex-eod-collector ──► Turso (eod_* tables)  ◄── tfex-quant-analytics (playbook 06:45)
-        │                                              │
-        │                    ┌─────────────────────────┘
-        ▼                    ▼
-tfex-intraday-collector ──► Turso (spot/futures/options snapshots 1 นาที)
-   (Settrade v2)                 │
-                                 ▼
-                        tfex-arb-opp (สแกนทุก 1 นาที + summary ท้าย session)
+tfex-eod-collector ──► Turso (eod_* tables) ───────────┐
+                                                        ├──► tfex-quant-analytics
+tfex-intraday-collector ──► Turso (snapshots 1 นาที) ───┘     (playbook 06:45)
+   (Settrade v2)
 
 tfex-common = ไลบรารีกลางที่ทุกตัว import (pin เป็น commit SHA)
 ```
@@ -65,7 +60,6 @@ tfex-common = ไลบรารีกลางที่ทุกตัว impor
 | 01:15 ทุกวัน | eod เดียวกัน | early tick (tolerant ผ่าน `--allow-stale` ถ้า TFEX ยังไม่ลง) |
 | 21:15 ทุกวัน | eod เดียวกัน | warm-up tick (tolerant) |
 | 09:15, 14:00 | `tfex-intraday-collector` → `Collect TFEX 1-Minute Data` | session worker เก็บ bar (timeout 240 นาที) |
-| 09:40, 14:10 | `tfex-arb-opp` → `TFEX Real-time 1-Minute Arbitrage Radar` | worker สแกน arb + summary ท้าย session |
 
 **window ที่ eod ยอมรับข้อมูลเก่า**: 14:00–18:00 UTC = 21:00–02:00 ICT (`collect_eod.yml`) — 06:15 ICT (23:00 UTC) อยู่นอก window จึง strict
 
@@ -81,10 +75,6 @@ tfex-common = ไลบรารีกลางที่ทุกตัว impor
 | **intraday** | เริ่ม / จบ / ล้ม | `▶️` / `✅` / `🚨` (แยก 3 ข้อความ) | `Lifecycle` — รวมถึง **exit 3 ตลาดนิ่ง = 🚨** |
 | intraday | checkpoint 09:45 / 12:30 / 13:45 / 16:55 | `📊 TFEX INTRADAY · …` | ข้ามถ้าไม่มีข้อมูลวันนั้น (Data Guard) |
 | intraday | exception กลาง session | `🚨 CRITICAL FAILURE` | cooldown 15 นาที |
-| **arb** | เริ่ม / จบ / ล้ม | `▶️` / `✅` / `🚨` | `--no-telegram` ปิดทั้ง 3 |
-| arb | พบโอกาส | `🚨 LIVE ARB ALERT` | cooldown 15 นาที/คู่สัญญา + สมมติฐาน fill + เงื่อนไขยกเลิก |
-| arb | ท้าย session | summary + ไฟล์ `.xlsx` | |
-| arb | Turso ไม่มีข้อมูล | `[ABORT]` | |
 | **quant** | playbook รายวัน | `🎯 แผนการเทรด SET50` | ไม่มีข้อความระดับแอปเมื่อล้ม (มี runner fallback) |
 | ทุก repo | timeout / cancelled / crash ก่อน entry point | `🚨 <workflow>` (runner step) | curl ล้วน ทำงานได้แม้ pip install ล้ม |
 
@@ -106,12 +96,12 @@ tfex-common = ไลบรารีกลางที่ทุกตัว impor
 ```bash
 # 1) PR ค้างทุก repo
 GH="$LOCALAPPDATA/gh/gh.exe"
-for r in tfex-eod-collector tfex-intraday-collector tfex-arb-opp tfex-quant-analytics tfex-common; do
+for r in tfex-eod-collector tfex-intraday-collector tfex-quant-analytics tfex-common; do
   echo "== $r =="; "$GH" pr list --repo "met37818-stack/$r" --state open
 done
 
 # 2) CI ล่าสุดบน main
-for r in tfex-eod-collector tfex-intraday-collector tfex-arb-opp tfex-quant-analytics tfex-common; do
+for r in tfex-eod-collector tfex-intraday-collector tfex-quant-analytics tfex-common; do
   "$GH" run list --repo "met37818-stack/$r" --branch main --limit 1 \
     --json name,conclusion,createdAt --jq '.[0]'
 done
@@ -119,7 +109,6 @@ done
 # 3) เทสต์ในเครื่อง (ใช้ venv ที่มีอยู่)
 cd $HOME/Documents/tfex-review/tfex-eod-collector      && $LOCALAPPDATA/Temp/tfex-repo1-311/.venv/Scripts/python.exe -m pytest -q
 cd $HOME/Documents/tfex-review/tfex-intraday-collector && $LOCALAPPDATA/Temp/repo2-311/.venv/Scripts/python.exe -m pytest -q
-cd $HOME/Documents/tfex-review/tfex-arb-opp            && .venv311/Scripts/python.exe -m pytest -q
 cd $HOME/Documents/tfex-review/tfex-quant-analytics    && .venv/Scripts/python.exe -m pytest -q
 cd $HOME/Documents/tfex-review/tfex-common             && .venv311/Scripts/python.exe -m pytest -q
 
@@ -188,13 +177,14 @@ python scripts/update_handoff.py --no-tests # โหมดเร็ว: ข้�
 | เรื่อง | สถานะ |
 |---|---|
 | เครื่องนี้ไม่มี credential ของ Turso / Settrade | รัน end-to-end กับ DB จริงไม่ได้ — ตรวจได้แค่ unit test + ตีกับ TFEX API จริง |
-| `eod-collector` + `quant-analytics` ยัง pin v0.5.0 | ไม่พัง (ไม่ใช้ `lifecycle`) แต่ถ้าอยากให้ตรงกันทั้ง 5 → bump เป็น `d73c2c9` |
+| `eod-collector` + `quant-analytics` ยัง pin v0.5.0 | ไม่พัง (ไม่ใช้ `lifecycle`) แต่ถ้าอยากให้ตรงกันทั้ง 4 → bump เป็น `d73c2c9` |
 | `eod` success alert ส่งเฉพาะ 05:30–07:30 ICT | ตั้งใจกัน duplicate → รอบ 21:15 / 01:15 ที่สำเร็จจะเงียบ |
 | `intraday --notify` ไม่มี lifecycle | ตั้งใจ (คำสั่งนี้คือการส่งข้อความอยู่แล้ว) |
 | `quant` ไม่มีข้อความระดับแอปเมื่อล้ม | มี runner-failure step แทน |
 | TFEX ลงข้อมูลเป็นรอบ (investor types/THOR มาก่อน settlement) | ต้นเหตุ exit 3 ตอน 01:15 — ไม่ใช่บั๊ก |
 | vision model ของ Hermes ตาย (404) | ห้ามใช้ตรวจภาพ; ยืนยันด้วย API แทน |
 | `curl` (native) ไม่เข้าใจ path `/tmp` ของ MSYS | ต้องใช้ `C:/Users/...` — ไม่งั้นเจอ "client returned ERROR on write" |
+| `tfex-arb-opp` + `tfex-options-combination-order` ถูกลบออกจาก org (2026-11-23) | ไม่มี repo ไหนพึ่งพาทั้งสองตัว; local clone ที่ `~/Documents/tfex-review/` คือสำเนาสุดท้ายที่เหลืออยู่ |
 
 ---
 
@@ -202,7 +192,7 @@ python scripts/update_handoff.py --no-tests # โหมดเร็ว: ข้�
 
 ไม่ต้อง setup อะไร — เปิดมาแล้วสั่งได้เลย ตัวอย่างคำสั่ง:
 
-- `"ตรวจ 5 repo ว่ายังเขียวไหม"` → ไล่ `gh pr list` + CI
+- `"ตรวจ 4 repo ว่ายังเขียวไหม"` → ไล่ `gh pr list` + CI
 - `"ดูข้อความ Telegram รอบเช้านี้"` → ตรวจ log/ผลรัน
 - `"รีวิว repo X"` → ใช้ skill `code-review` (ไทย 3 ระดับ)
 - `"bump pin เป็น <sha>"` → อัปเดต `requirements*.txt` + PR

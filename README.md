@@ -133,6 +133,8 @@ Semantic-ish: `0.x` while the API can still change. Bump the tag and update the
 | `tfex-arb-opp` | `SET_HOLIDAYS`, `get_penultimate_business_day`, `get_contract_last_trading_day`, `parse_series_expiry`, `resolve_active_series_candidates`, `select_dynamic_thor_rate`, `_to_decimal_rate`, `execute_turso_sql`, `send_telegram_alert`, `send_telegram_document` | `tfex_common.{calendar,thor,turso,telegram}` |
 | `tfex-quant-analytics` | same set as `arb-opp` plus `get_series_expiry_date` | `tfex_common.{calendar,thor,turso,telegram}` |
 
+> **หมายเหตุ (2026-11-23):** `tfex-arb-opp` ถูกลบออกจาก org แล้ว — แถวข้างบนเก็บไว้เป็นประวัติการ migrate ไม่ใช่ repo ที่ยังใช้งาน
+
 Parity measured before publishing (every case compared against the already-fixed
 repo code, zero mismatches):
 
