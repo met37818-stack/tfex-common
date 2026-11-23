@@ -77,6 +77,25 @@ requests_list = [
 execute_pipeline(pipeline, token, requests_list=requests_list, timeout=30)   # -> results
 ```
 
+Report layout (shared Telegram template):
+
+```python
+from tfex_common import Report, bullet, rr
+
+r = Report(title="SET50 · S50Z26 · ข้อมูลสิ้นวัน 2026-11-20",
+           subtitle="ออกรายงาน 06:46 น.", ready_sections=6)
+r.add_measured(bullet("Settlement <code>991.1</code> | ATM IV <code>14.64%</code>"))
+r.add_inferred(bullet("Dealer Gamma: Negative Gamma — สมมติว่าดีลเลอร์ short OI ลูกค้า"))
+r.add_plan(bullet(f"Long | 980–982 | Stop Loss &lt;970 | เป้า 1000 (R:R {rr(1000, 982, 970)})"))
+r.add_pending("RV vs IV (0/10 บาร์)")
+r.add_watch("ปิดเหนือ <code>1016.3</code> (gamma เปลี่ยนโซน)")
+send_alert(token, chat_id, r.build_telegram())      # รับประกัน <= 4096 ตัวอักษร
+```
+
+The layout exists so the two alerting jobs cannot drift apart: measured numbers come
+first, model assumptions are labelled as such, and anything the pipeline cannot
+support is listed once under `⏳ ยังไม่พร้อม` instead of being printed as `0.0`.
+
 ## Tests
 
 ```bash
