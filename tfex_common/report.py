@@ -84,6 +84,8 @@ class Report:
     footer: str = ""
     ready_sections: Optional[int] = None
     plan_heading: Optional[str] = HEADING_PLAN
+    measured_heading: Optional[str] = HEADING_MEASURED
+    icon: str = "📊"
     show_divider: bool = True
 
     # ---------------------------------------------------------------- builders
@@ -136,7 +138,7 @@ class Report:
     def _render(self, measured: List[str], inferred: List[str]) -> str:
         blocks: List[List[str]] = []
 
-        head = [f"📊 <b>{self.title}</b>"]
+        head = [f"{self.icon + ' ' if self.icon else ''}<b>{self.title}</b>"]
         meta = self.meta_line()
         if meta:
             head.append(f"🕖 <i>{meta}</i>")
@@ -146,7 +148,7 @@ class Report:
             blocks.append([DIVIDER])
 
         for heading, lines in (
-            (HEADING_MEASURED, measured),
+            (self.measured_heading, measured),
             (HEADING_INFERRED, inferred),
             (self.plan_heading, self.plan),
         ):

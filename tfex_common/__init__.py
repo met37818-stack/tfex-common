@@ -27,6 +27,7 @@ Layout:
     tfex_common.telegram    redaction-safe Telegram dispatch
     tfex_common.report      measured / inferred / plan report layout + Telegram limit
     tfex_common.levels      price ladder, option walls, plan legs with risk-reward
+    tfex_common.lifecycle   started / finished / failed notices for long-running jobs
 """
 from .constants import (
     BKK_TZ,
@@ -64,6 +65,7 @@ from .turso import (
     to_arg,
 )
 from .levels import Level, LevelBook, plan_leg
+from .lifecycle import Lifecycle, run_failed, run_finished, run_started, safe_error_text
 from .report import (
     DIVIDER,
     TELEGRAM_LIMIT,
@@ -74,7 +76,7 @@ from .report import (
 )
 from .telegram import escape_html, send_alert, send_document
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 __all__ = [
     "BKK_TZ", "CHARM_CLAMP", "COMMISSION_2LEG_PTS", "COMMISSION_3LEG_PTS",
@@ -89,5 +91,6 @@ __all__ = [
     "escape_html", "send_alert", "send_document",
     "Report", "TELEGRAM_LIMIT", "DIVIDER", "bullet", "sub", "rr",
     "Level", "LevelBook", "plan_leg",
+    "Lifecycle", "run_started", "run_finished", "run_failed", "safe_error_text",
     "__version__",
 ]
